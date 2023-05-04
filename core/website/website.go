@@ -3,6 +3,8 @@ package website
 import (
 	"_schemas/ent"
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type IWebsiteService interface {
@@ -13,4 +15,8 @@ type IWebsiteService interface {
 	// GetUserWebsites returns all websites for the given user.
 	// It returns a list of websites on success, or an error on failure.
 	GetUserWebsites(ctx context.Context, user *ent.User) ([]*ent.Website, error)
+
+	// GetWebsiteByID returns the website with the given ID for the given user.
+	// It returns a website on success, or an error on failure.
+	GetWebsiteByID(ctx context.Context, user *ent.User, id uuid.UUID) (*ent.Website, error)
 }
