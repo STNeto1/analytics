@@ -31,4 +31,8 @@ type IWebsiteService interface {
 	// CreateWebsiteEvent creates a new website event for the given website.
 	// It returns an error on failure.
 	CreateWebsiteEvent(ctx context.Context, id uuid.UUID, payload *CreateWebsiteEventPayload) error
+
+	// GetWebSiteEvents returns all events for the given website and user.
+	// It returns a list of events on success, or an error on failure.
+	GetWebsiteEvents(ctx context.Context, user *ent.User, id uuid.UUID) ([]*ent.WebsiteEvent, error)
 }
