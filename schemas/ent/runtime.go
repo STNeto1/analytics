@@ -5,6 +5,7 @@ package ent
 import (
 	"_schemas/ent/schema"
 	"_schemas/ent/user"
+	"_schemas/ent/website"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,4 +25,20 @@ func init() {
 	userDescID := userFields[0].Descriptor()
 	// user.DefaultID holds the default value on creation for the id field.
 	user.DefaultID = userDescID.Default.(func() uuid.UUID)
+	websiteFields := schema.Website{}.Fields()
+	_ = websiteFields
+	// websiteDescCreatedAt is the schema descriptor for created_at field.
+	websiteDescCreatedAt := websiteFields[3].Descriptor()
+	// website.DefaultCreatedAt holds the default value on creation for the created_at field.
+	website.DefaultCreatedAt = websiteDescCreatedAt.Default.(func() time.Time)
+	// websiteDescUpdatedAt is the schema descriptor for updated_at field.
+	websiteDescUpdatedAt := websiteFields[4].Descriptor()
+	// website.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	website.DefaultUpdatedAt = websiteDescUpdatedAt.Default.(func() time.Time)
+	// website.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	website.UpdateDefaultUpdatedAt = websiteDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// websiteDescID is the schema descriptor for id field.
+	websiteDescID := websiteFields[0].Descriptor()
+	// website.DefaultID holds the default value on creation for the id field.
+	website.DefaultID = websiteDescID.Default.(func() uuid.UUID)
 }

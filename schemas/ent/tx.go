@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// Website is the client for interacting with the Website builders.
+	Website *WebsiteClient
 
 	// lazily loaded.
 	client     *Client
@@ -146,6 +148,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.User = NewUserClient(tx.config)
+	tx.Website = NewWebsiteClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

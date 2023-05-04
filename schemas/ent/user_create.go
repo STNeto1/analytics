@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_schemas/ent/user"
+	"_schemas/ent/website"
 	"context"
 	"errors"
 	"fmt"
@@ -65,6 +66,21 @@ func (uc *UserCreate) SetNillableID(u *uuid.UUID) *UserCreate {
 		uc.SetID(*u)
 	}
 	return uc
+}
+
+// AddWebsiteIDs adds the "websites" edge to the Website entity by IDs.
+func (uc *UserCreate) AddWebsiteIDs(ids ...uuid.UUID) *UserCreate {
+	uc.mutation.AddWebsiteIDs(ids...)
+	return uc
+}
+
+// AddWebsites adds the "websites" edges to the Website entity.
+func (uc *UserCreate) AddWebsites(w ...*Website) *UserCreate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return uc.AddWebsiteIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -176,6 +192,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := uc.mutation.WebsitesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

@@ -22,11 +22,37 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// WebsitesColumns holds the columns for the "websites" table.
+	WebsitesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "domain", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_websites", Type: field.TypeUUID, Nullable: true},
+	}
+	// WebsitesTable holds the schema information for the "websites" table.
+	WebsitesTable = &schema.Table{
+		Name:       "websites",
+		Columns:    WebsitesColumns,
+		PrimaryKey: []*schema.Column{WebsitesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "websites_users_websites",
+				Columns:    []*schema.Column{WebsitesColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		UsersTable,
+		WebsitesTable,
 	}
 )
 
 func init() {
+	WebsitesTable.ForeignKeys[0].RefTable = UsersTable
 }

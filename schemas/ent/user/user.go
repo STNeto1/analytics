@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -22,8 +23,17 @@ const (
 	FieldPassword = "password"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeWebsites holds the string denoting the websites edge name in mutations.
+	EdgeWebsites = "websites"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// WebsitesTable is the table that holds the websites relation/edge.
+	WebsitesTable = "websites"
+	// WebsitesInverseTable is the table name for the Website entity.
+	// It exists in this package in order to avoid circular dependency with the "website" package.
+	WebsitesInverseTable = "websites"
+	// WebsitesColumn is the table column denoting the websites relation/edge.
+	WebsitesColumn = "user_websites"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -78,4 +88,25 @@ func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByWebsitesCount orders the results by websites count.
+func ByWebsitesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newWebsitesStep(), opts...)
+	}
+}
+
+// ByWebsites orders the results by websites terms.
+func ByWebsites(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWebsitesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newWebsitesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WebsitesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, WebsitesTable, WebsitesColumn),
+	)
 }

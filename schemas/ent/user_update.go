@@ -5,6 +5,7 @@ package ent
 import (
 	"_schemas/ent/predicate"
 	"_schemas/ent/user"
+	"_schemas/ent/website"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -60,9 +62,45 @@ func (uu *UserUpdate) SetNillableCreatedAt(t *time.Time) *UserUpdate {
 	return uu
 }
 
+// AddWebsiteIDs adds the "websites" edge to the Website entity by IDs.
+func (uu *UserUpdate) AddWebsiteIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.AddWebsiteIDs(ids...)
+	return uu
+}
+
+// AddWebsites adds the "websites" edges to the Website entity.
+func (uu *UserUpdate) AddWebsites(w ...*Website) *UserUpdate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return uu.AddWebsiteIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearWebsites clears all "websites" edges to the Website entity.
+func (uu *UserUpdate) ClearWebsites() *UserUpdate {
+	uu.mutation.ClearWebsites()
+	return uu
+}
+
+// RemoveWebsiteIDs removes the "websites" edge to Website entities by IDs.
+func (uu *UserUpdate) RemoveWebsiteIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.RemoveWebsiteIDs(ids...)
+	return uu
+}
+
+// RemoveWebsites removes "websites" edges to Website entities.
+func (uu *UserUpdate) RemoveWebsites(w ...*Website) *UserUpdate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return uu.RemoveWebsiteIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -112,6 +150,51 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := uu.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
+	}
+	if uu.mutation.WebsitesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedWebsitesIDs(); len(nodes) > 0 && !uu.mutation.WebsitesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.WebsitesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -165,9 +248,45 @@ func (uuo *UserUpdateOne) SetNillableCreatedAt(t *time.Time) *UserUpdateOne {
 	return uuo
 }
 
+// AddWebsiteIDs adds the "websites" edge to the Website entity by IDs.
+func (uuo *UserUpdateOne) AddWebsiteIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.AddWebsiteIDs(ids...)
+	return uuo
+}
+
+// AddWebsites adds the "websites" edges to the Website entity.
+func (uuo *UserUpdateOne) AddWebsites(w ...*Website) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return uuo.AddWebsiteIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearWebsites clears all "websites" edges to the Website entity.
+func (uuo *UserUpdateOne) ClearWebsites() *UserUpdateOne {
+	uuo.mutation.ClearWebsites()
+	return uuo
+}
+
+// RemoveWebsiteIDs removes the "websites" edge to Website entities by IDs.
+func (uuo *UserUpdateOne) RemoveWebsiteIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.RemoveWebsiteIDs(ids...)
+	return uuo
+}
+
+// RemoveWebsites removes "websites" edges to Website entities.
+func (uuo *UserUpdateOne) RemoveWebsites(w ...*Website) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return uuo.RemoveWebsiteIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -247,6 +366,51 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	}
 	if value, ok := uuo.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
+	}
+	if uuo.mutation.WebsitesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedWebsitesIDs(); len(nodes) > 0 && !uuo.mutation.WebsitesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.WebsitesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WebsitesTable,
+			Columns: []string{user.WebsitesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(website.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues
