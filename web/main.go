@@ -1,17 +1,34 @@
 package main
 
 import (
-	"net/http"
+	"_core/auth"
+	"_web/pkg"
+	"_web/router"
+	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/zap"
 )
 
 func main() {
+	godotenv.Load()
+
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
+	conn := pkg.InitDB(logger)
+
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-	e.Logger.Fatal(e.Start(":1323"))
+	pkg.Logger(e, logger)
+	e.Use(middleware.Recover())
 
+	authService := auth.NewAuthService(conn, os.Getenv("SECRET"), logger)
+	routerContainer := router.NewRouterContainer(logger, e, authService)
+
+	routerContainer.CreateAuthRoutes()
+
+	e.Logger.Fatal(e.Start(":1323"))
 }
