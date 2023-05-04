@@ -26,7 +26,7 @@ func (WebsiteEvent) Fields() []ent.Field {
 		field.String("referrer_domain").Optional(),
 		field.String("page_title").Optional(),
 		field.String("page_data").Optional(), // JSON string
-		field.Time("created_at").Default(time.Now),
+		field.Time("created_at").Default(time.Now).Immutable(),
 	}
 }
 

@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -176,20 +175,6 @@ func (weu *WebsiteEventUpdate) ClearPageData() *WebsiteEventUpdate {
 	return weu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (weu *WebsiteEventUpdate) SetCreatedAt(t time.Time) *WebsiteEventUpdate {
-	weu.mutation.SetCreatedAt(t)
-	return weu
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (weu *WebsiteEventUpdate) SetNillableCreatedAt(t *time.Time) *WebsiteEventUpdate {
-	if t != nil {
-		weu.SetCreatedAt(*t)
-	}
-	return weu
-}
-
 // SetWebsiteID sets the "website" edge to the Website entity by ID.
 func (weu *WebsiteEventUpdate) SetWebsiteID(id uuid.UUID) *WebsiteEventUpdate {
 	weu.mutation.SetWebsiteID(id)
@@ -300,9 +285,6 @@ func (weu *WebsiteEventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if weu.mutation.PageDataCleared() {
 		_spec.ClearField(websiteevent.FieldPageData, field.TypeString)
-	}
-	if value, ok := weu.mutation.CreatedAt(); ok {
-		_spec.SetField(websiteevent.FieldCreatedAt, field.TypeTime, value)
 	}
 	if weu.mutation.WebsiteCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -499,20 +481,6 @@ func (weuo *WebsiteEventUpdateOne) ClearPageData() *WebsiteEventUpdateOne {
 	return weuo
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (weuo *WebsiteEventUpdateOne) SetCreatedAt(t time.Time) *WebsiteEventUpdateOne {
-	weuo.mutation.SetCreatedAt(t)
-	return weuo
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (weuo *WebsiteEventUpdateOne) SetNillableCreatedAt(t *time.Time) *WebsiteEventUpdateOne {
-	if t != nil {
-		weuo.SetCreatedAt(*t)
-	}
-	return weuo
-}
-
 // SetWebsiteID sets the "website" edge to the Website entity by ID.
 func (weuo *WebsiteEventUpdateOne) SetWebsiteID(id uuid.UUID) *WebsiteEventUpdateOne {
 	weuo.mutation.SetWebsiteID(id)
@@ -653,9 +621,6 @@ func (weuo *WebsiteEventUpdateOne) sqlSave(ctx context.Context) (_node *WebsiteE
 	}
 	if weuo.mutation.PageDataCleared() {
 		_spec.ClearField(websiteevent.FieldPageData, field.TypeString)
-	}
-	if value, ok := weuo.mutation.CreatedAt(); ok {
-		_spec.SetField(websiteevent.FieldCreatedAt, field.TypeTime, value)
 	}
 	if weuo.mutation.WebsiteCleared() {
 		edge := &sqlgraph.EdgeSpec{

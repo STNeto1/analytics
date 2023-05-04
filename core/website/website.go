@@ -27,4 +27,8 @@ type IWebsiteService interface {
 	// DeleteWebsite deletes the website with the given ID for the given user.
 	// It returns an error on failure.
 	DeleteWebsite(ctx context.Context, user *ent.User, id uuid.UUID) error
+
+	// CreateWebsiteEvent creates a new website event for the given website.
+	// It returns an error on failure.
+	CreateWebsiteEvent(ctx context.Context, id uuid.UUID, payload *CreateWebsiteEventPayload) error
 }
