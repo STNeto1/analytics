@@ -19,4 +19,8 @@ type IWebsiteService interface {
 	// GetWebsiteByID returns the website with the given ID for the given user.
 	// It returns a website on success, or an error on failure.
 	GetWebsiteByID(ctx context.Context, user *ent.User, id uuid.UUID) (*ent.Website, error)
+
+	// UpdateWebsite updates the website with the given ID for the given user.
+	// It returns a website on success, or an error on failure.
+	UpdateWebsite(ctx context.Context, user *ent.User, id uuid.UUID, name, domain string) (*ent.Website, error)
 }
