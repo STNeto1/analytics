@@ -46,13 +46,43 @@ var (
 			},
 		},
 	}
+	// WebsiteEventsColumns holds the columns for the "website_events" table.
+	WebsiteEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "event_name", Type: field.TypeString},
+		{Name: "url_path", Type: field.TypeString, Nullable: true},
+		{Name: "url_query", Type: field.TypeString, Nullable: true},
+		{Name: "referrer_path", Type: field.TypeString, Nullable: true},
+		{Name: "referrer_query", Type: field.TypeString, Nullable: true},
+		{Name: "referrer_domain", Type: field.TypeString, Nullable: true},
+		{Name: "page_title", Type: field.TypeString, Nullable: true},
+		{Name: "page_data", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "website_id", Type: field.TypeUUID, Nullable: true},
+	}
+	// WebsiteEventsTable holds the schema information for the "website_events" table.
+	WebsiteEventsTable = &schema.Table{
+		Name:       "website_events",
+		Columns:    WebsiteEventsColumns,
+		PrimaryKey: []*schema.Column{WebsiteEventsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "website_events_websites_events",
+				Columns:    []*schema.Column{WebsiteEventsColumns[10]},
+				RefColumns: []*schema.Column{WebsitesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		UsersTable,
 		WebsitesTable,
+		WebsiteEventsTable,
 	}
 )
 
 func init() {
 	WebsitesTable.ForeignKeys[0].RefTable = UsersTable
+	WebsiteEventsTable.ForeignKeys[0].RefTable = WebsitesTable
 }

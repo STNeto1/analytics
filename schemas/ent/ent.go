@@ -5,6 +5,7 @@ package ent
 import (
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 	"context"
 	"errors"
 	"fmt"
@@ -74,8 +75,9 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			user.Table:    user.ValidColumn,
-			website.Table: website.ValidColumn,
+			user.Table:         user.ValidColumn,
+			website.Table:      website.ValidColumn,
+			websiteevent.Table: websiteevent.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

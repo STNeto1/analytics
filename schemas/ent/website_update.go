@@ -6,6 +6,7 @@ import (
 	"_schemas/ent/predicate"
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 	"context"
 	"errors"
 	"fmt"
@@ -115,6 +116,21 @@ func (wu *WebsiteUpdate) SetUser(u *User) *WebsiteUpdate {
 	return wu.SetUserID(u.ID)
 }
 
+// AddEventIDs adds the "events" edge to the WebsiteEvent entity by IDs.
+func (wu *WebsiteUpdate) AddEventIDs(ids ...uuid.UUID) *WebsiteUpdate {
+	wu.mutation.AddEventIDs(ids...)
+	return wu
+}
+
+// AddEvents adds the "events" edges to the WebsiteEvent entity.
+func (wu *WebsiteUpdate) AddEvents(w ...*WebsiteEvent) *WebsiteUpdate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return wu.AddEventIDs(ids...)
+}
+
 // Mutation returns the WebsiteMutation object of the builder.
 func (wu *WebsiteUpdate) Mutation() *WebsiteMutation {
 	return wu.mutation
@@ -124,6 +140,27 @@ func (wu *WebsiteUpdate) Mutation() *WebsiteMutation {
 func (wu *WebsiteUpdate) ClearUser() *WebsiteUpdate {
 	wu.mutation.ClearUser()
 	return wu
+}
+
+// ClearEvents clears all "events" edges to the WebsiteEvent entity.
+func (wu *WebsiteUpdate) ClearEvents() *WebsiteUpdate {
+	wu.mutation.ClearEvents()
+	return wu
+}
+
+// RemoveEventIDs removes the "events" edge to WebsiteEvent entities by IDs.
+func (wu *WebsiteUpdate) RemoveEventIDs(ids ...uuid.UUID) *WebsiteUpdate {
+	wu.mutation.RemoveEventIDs(ids...)
+	return wu
+}
+
+// RemoveEvents removes "events" edges to WebsiteEvent entities.
+func (wu *WebsiteUpdate) RemoveEvents(w ...*WebsiteEvent) *WebsiteUpdate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return wu.RemoveEventIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -214,6 +251,51 @@ func (wu *WebsiteUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if wu.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := wu.mutation.RemovedEventsIDs(); len(nodes) > 0 && !wu.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := wu.mutation.EventsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -326,6 +408,21 @@ func (wuo *WebsiteUpdateOne) SetUser(u *User) *WebsiteUpdateOne {
 	return wuo.SetUserID(u.ID)
 }
 
+// AddEventIDs adds the "events" edge to the WebsiteEvent entity by IDs.
+func (wuo *WebsiteUpdateOne) AddEventIDs(ids ...uuid.UUID) *WebsiteUpdateOne {
+	wuo.mutation.AddEventIDs(ids...)
+	return wuo
+}
+
+// AddEvents adds the "events" edges to the WebsiteEvent entity.
+func (wuo *WebsiteUpdateOne) AddEvents(w ...*WebsiteEvent) *WebsiteUpdateOne {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return wuo.AddEventIDs(ids...)
+}
+
 // Mutation returns the WebsiteMutation object of the builder.
 func (wuo *WebsiteUpdateOne) Mutation() *WebsiteMutation {
 	return wuo.mutation
@@ -335,6 +432,27 @@ func (wuo *WebsiteUpdateOne) Mutation() *WebsiteMutation {
 func (wuo *WebsiteUpdateOne) ClearUser() *WebsiteUpdateOne {
 	wuo.mutation.ClearUser()
 	return wuo
+}
+
+// ClearEvents clears all "events" edges to the WebsiteEvent entity.
+func (wuo *WebsiteUpdateOne) ClearEvents() *WebsiteUpdateOne {
+	wuo.mutation.ClearEvents()
+	return wuo
+}
+
+// RemoveEventIDs removes the "events" edge to WebsiteEvent entities by IDs.
+func (wuo *WebsiteUpdateOne) RemoveEventIDs(ids ...uuid.UUID) *WebsiteUpdateOne {
+	wuo.mutation.RemoveEventIDs(ids...)
+	return wuo
+}
+
+// RemoveEvents removes "events" edges to WebsiteEvent entities.
+func (wuo *WebsiteUpdateOne) RemoveEvents(w ...*WebsiteEvent) *WebsiteUpdateOne {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return wuo.RemoveEventIDs(ids...)
 }
 
 // Where appends a list predicates to the WebsiteUpdate builder.
@@ -455,6 +573,51 @@ func (wuo *WebsiteUpdateOne) sqlSave(ctx context.Context) (_node *Website, err e
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if wuo.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := wuo.mutation.RemovedEventsIDs(); len(nodes) > 0 && !wuo.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := wuo.mutation.EventsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

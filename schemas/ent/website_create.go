@@ -5,6 +5,7 @@ package ent
 import (
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 	"context"
 	"errors"
 	"fmt"
@@ -115,6 +116,21 @@ func (wc *WebsiteCreate) SetNillableUserID(id *uuid.UUID) *WebsiteCreate {
 // SetUser sets the "user" edge to the User entity.
 func (wc *WebsiteCreate) SetUser(u *User) *WebsiteCreate {
 	return wc.SetUserID(u.ID)
+}
+
+// AddEventIDs adds the "events" edge to the WebsiteEvent entity by IDs.
+func (wc *WebsiteCreate) AddEventIDs(ids ...uuid.UUID) *WebsiteCreate {
+	wc.mutation.AddEventIDs(ids...)
+	return wc
+}
+
+// AddEvents adds the "events" edges to the WebsiteEvent entity.
+func (wc *WebsiteCreate) AddEvents(w ...*WebsiteEvent) *WebsiteCreate {
+	ids := make([]uuid.UUID, len(w))
+	for i := range w {
+		ids[i] = w[i].ID
+	}
+	return wc.AddEventIDs(ids...)
 }
 
 // Mutation returns the WebsiteMutation object of the builder.
@@ -247,6 +263,22 @@ func (wc *WebsiteCreate) createSpec() (*Website, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.user_websites = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := wc.mutation.EventsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   website.EventsTable,
+			Columns: []string{website.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(websiteevent.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

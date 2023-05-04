@@ -32,6 +32,18 @@ func (f WebsiteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WebsiteMutation", m)
 }
 
+// The WebsiteEventFunc type is an adapter to allow the use of ordinary
+// function as WebsiteEvent mutator.
+type WebsiteEventFunc func(context.Context, *ent.WebsiteEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WebsiteEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WebsiteEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WebsiteEventMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

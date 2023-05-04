@@ -12,6 +12,7 @@ import (
 
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -29,6 +30,8 @@ type Client struct {
 	User *UserClient
 	// Website is the client for interacting with the Website builders.
 	Website *WebsiteClient
+	// WebsiteEvent is the client for interacting with the WebsiteEvent builders.
+	WebsiteEvent *WebsiteEventClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -44,6 +47,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.User = NewUserClient(c.config)
 	c.Website = NewWebsiteClient(c.config)
+	c.WebsiteEvent = NewWebsiteEventClient(c.config)
 }
 
 type (
@@ -124,10 +128,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		User:    NewUserClient(cfg),
-		Website: NewWebsiteClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		User:         NewUserClient(cfg),
+		Website:      NewWebsiteClient(cfg),
+		WebsiteEvent: NewWebsiteEventClient(cfg),
 	}, nil
 }
 
@@ -145,10 +150,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		User:    NewUserClient(cfg),
-		Website: NewWebsiteClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		User:         NewUserClient(cfg),
+		Website:      NewWebsiteClient(cfg),
+		WebsiteEvent: NewWebsiteEventClient(cfg),
 	}, nil
 }
 
@@ -179,6 +185,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.User.Use(hooks...)
 	c.Website.Use(hooks...)
+	c.WebsiteEvent.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -186,6 +193,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.User.Intercept(interceptors...)
 	c.Website.Intercept(interceptors...)
+	c.WebsiteEvent.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -195,6 +203,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.User.mutate(ctx, m)
 	case *WebsiteMutation:
 		return c.Website.mutate(ctx, m)
+	case *WebsiteEventMutation:
+		return c.WebsiteEvent.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -443,6 +453,22 @@ func (c *WebsiteClient) QueryUser(w *Website) *UserQuery {
 	return query
 }
 
+// QueryEvents queries the events edge of a Website.
+func (c *WebsiteClient) QueryEvents(w *Website) *WebsiteEventQuery {
+	query := (&WebsiteEventClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := w.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(website.Table, website.FieldID, id),
+			sqlgraph.To(websiteevent.Table, websiteevent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, website.EventsTable, website.EventsColumn),
+		)
+		fromV = sqlgraph.Neighbors(w.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *WebsiteClient) Hooks() []Hook {
 	return c.hooks.Website
@@ -468,12 +494,146 @@ func (c *WebsiteClient) mutate(ctx context.Context, m *WebsiteMutation) (Value, 
 	}
 }
 
+// WebsiteEventClient is a client for the WebsiteEvent schema.
+type WebsiteEventClient struct {
+	config
+}
+
+// NewWebsiteEventClient returns a client for the WebsiteEvent from the given config.
+func NewWebsiteEventClient(c config) *WebsiteEventClient {
+	return &WebsiteEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `websiteevent.Hooks(f(g(h())))`.
+func (c *WebsiteEventClient) Use(hooks ...Hook) {
+	c.hooks.WebsiteEvent = append(c.hooks.WebsiteEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `websiteevent.Intercept(f(g(h())))`.
+func (c *WebsiteEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WebsiteEvent = append(c.inters.WebsiteEvent, interceptors...)
+}
+
+// Create returns a builder for creating a WebsiteEvent entity.
+func (c *WebsiteEventClient) Create() *WebsiteEventCreate {
+	mutation := newWebsiteEventMutation(c.config, OpCreate)
+	return &WebsiteEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WebsiteEvent entities.
+func (c *WebsiteEventClient) CreateBulk(builders ...*WebsiteEventCreate) *WebsiteEventCreateBulk {
+	return &WebsiteEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WebsiteEvent.
+func (c *WebsiteEventClient) Update() *WebsiteEventUpdate {
+	mutation := newWebsiteEventMutation(c.config, OpUpdate)
+	return &WebsiteEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WebsiteEventClient) UpdateOne(we *WebsiteEvent) *WebsiteEventUpdateOne {
+	mutation := newWebsiteEventMutation(c.config, OpUpdateOne, withWebsiteEvent(we))
+	return &WebsiteEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WebsiteEventClient) UpdateOneID(id uuid.UUID) *WebsiteEventUpdateOne {
+	mutation := newWebsiteEventMutation(c.config, OpUpdateOne, withWebsiteEventID(id))
+	return &WebsiteEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WebsiteEvent.
+func (c *WebsiteEventClient) Delete() *WebsiteEventDelete {
+	mutation := newWebsiteEventMutation(c.config, OpDelete)
+	return &WebsiteEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WebsiteEventClient) DeleteOne(we *WebsiteEvent) *WebsiteEventDeleteOne {
+	return c.DeleteOneID(we.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WebsiteEventClient) DeleteOneID(id uuid.UUID) *WebsiteEventDeleteOne {
+	builder := c.Delete().Where(websiteevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WebsiteEventDeleteOne{builder}
+}
+
+// Query returns a query builder for WebsiteEvent.
+func (c *WebsiteEventClient) Query() *WebsiteEventQuery {
+	return &WebsiteEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWebsiteEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WebsiteEvent entity by its id.
+func (c *WebsiteEventClient) Get(ctx context.Context, id uuid.UUID) (*WebsiteEvent, error) {
+	return c.Query().Where(websiteevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WebsiteEventClient) GetX(ctx context.Context, id uuid.UUID) *WebsiteEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryWebsite queries the website edge of a WebsiteEvent.
+func (c *WebsiteEventClient) QueryWebsite(we *WebsiteEvent) *WebsiteQuery {
+	query := (&WebsiteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := we.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(websiteevent.Table, websiteevent.FieldID, id),
+			sqlgraph.To(website.Table, website.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, websiteevent.WebsiteTable, websiteevent.WebsiteColumn),
+		)
+		fromV = sqlgraph.Neighbors(we.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WebsiteEventClient) Hooks() []Hook {
+	return c.hooks.WebsiteEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *WebsiteEventClient) Interceptors() []Interceptor {
+	return c.inters.WebsiteEvent
+}
+
+func (c *WebsiteEventClient) mutate(ctx context.Context, m *WebsiteEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WebsiteEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WebsiteEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WebsiteEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WebsiteEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WebsiteEvent mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		User, Website []ent.Hook
+		User, Website, WebsiteEvent []ent.Hook
 	}
 	inters struct {
-		User, Website []ent.Interceptor
+		User, Website, WebsiteEvent []ent.Interceptor
 	}
 )

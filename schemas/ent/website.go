@@ -40,9 +40,11 @@ type Website struct {
 type WebsiteEdges struct {
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
+	// Events holds the value of the events edge.
+	Events []*WebsiteEvent `json:"events,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -56,6 +58,15 @@ func (e WebsiteEdges) UserOrErr() (*User, error) {
 		return e.User, nil
 	}
 	return nil, &NotLoadedError{edge: "user"}
+}
+
+// EventsOrErr returns the Events value or an error if the edge
+// was not loaded in eager-loading.
+func (e WebsiteEdges) EventsOrErr() ([]*WebsiteEvent, error) {
+	if e.loadedTypes[1] {
+		return e.Events, nil
+	}
+	return nil, &NotLoadedError{edge: "events"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -146,6 +157,11 @@ func (w *Website) Value(name string) (ent.Value, error) {
 // QueryUser queries the "user" edge of the Website entity.
 func (w *Website) QueryUser() *UserQuery {
 	return NewWebsiteClient(w.config).QueryUser(w)
+}
+
+// QueryEvents queries the "events" edge of the Website entity.
+func (w *Website) QueryEvents() *WebsiteEventQuery {
+	return NewWebsiteClient(w.config).QueryEvents(w)
 }
 
 // Update returns a builder for updating this Website.

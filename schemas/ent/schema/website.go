@@ -30,5 +30,6 @@ func (Website) Fields() []ent.Field {
 func (Website) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).Ref("websites").Unique(),
+		edge.To("events", WebsiteEvent.Type).StorageKey(edge.Column("website_id")),
 	}
 }

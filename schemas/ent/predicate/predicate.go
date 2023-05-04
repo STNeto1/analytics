@@ -11,3 +11,6 @@ type User func(*sql.Selector)
 
 // Website is the predicate function for website builders.
 type Website func(*sql.Selector)
+
+// WebsiteEvent is the predicate function for websiteevent builders.
+type WebsiteEvent func(*sql.Selector)

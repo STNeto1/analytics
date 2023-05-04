@@ -6,6 +6,7 @@ import (
 	"_schemas/ent/predicate"
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 	"context"
 	"errors"
 	"fmt"
@@ -26,8 +27,9 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeUser    = "User"
-	TypeWebsite = "Website"
+	TypeUser         = "User"
+	TypeWebsite      = "Website"
+	TypeWebsiteEvent = "WebsiteEvent"
 )
 
 // UserMutation represents an operation that mutates the User nodes in the graph.
@@ -631,6 +633,9 @@ type WebsiteMutation struct {
 	clearedFields map[string]struct{}
 	user          *uuid.UUID
 	cleareduser   bool
+	events        map[uuid.UUID]struct{}
+	removedevents map[uuid.UUID]struct{}
+	clearedevents bool
 	done          bool
 	oldValue      func(context.Context) (*Website, error)
 	predicates    []predicate.Website
@@ -985,6 +990,60 @@ func (m *WebsiteMutation) ResetUser() {
 	m.cleareduser = false
 }
 
+// AddEventIDs adds the "events" edge to the WebsiteEvent entity by ids.
+func (m *WebsiteMutation) AddEventIDs(ids ...uuid.UUID) {
+	if m.events == nil {
+		m.events = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.events[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEvents clears the "events" edge to the WebsiteEvent entity.
+func (m *WebsiteMutation) ClearEvents() {
+	m.clearedevents = true
+}
+
+// EventsCleared reports if the "events" edge to the WebsiteEvent entity was cleared.
+func (m *WebsiteMutation) EventsCleared() bool {
+	return m.clearedevents
+}
+
+// RemoveEventIDs removes the "events" edge to the WebsiteEvent entity by IDs.
+func (m *WebsiteMutation) RemoveEventIDs(ids ...uuid.UUID) {
+	if m.removedevents == nil {
+		m.removedevents = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.events, ids[i])
+		m.removedevents[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEvents returns the removed IDs of the "events" edge to the WebsiteEvent entity.
+func (m *WebsiteMutation) RemovedEventsIDs() (ids []uuid.UUID) {
+	for id := range m.removedevents {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EventsIDs returns the "events" edge IDs in the mutation.
+func (m *WebsiteMutation) EventsIDs() (ids []uuid.UUID) {
+	for id := range m.events {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEvents resets all changes to the "events" edge.
+func (m *WebsiteMutation) ResetEvents() {
+	m.events = nil
+	m.clearedevents = false
+	m.removedevents = nil
+}
+
 // Where appends a list predicates to the WebsiteMutation builder.
 func (m *WebsiteMutation) Where(ps ...predicate.Website) {
 	m.predicates = append(m.predicates, ps...)
@@ -1201,9 +1260,12 @@ func (m *WebsiteMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *WebsiteMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.user != nil {
 		edges = append(edges, website.EdgeUser)
+	}
+	if m.events != nil {
+		edges = append(edges, website.EdgeEvents)
 	}
 	return edges
 }
@@ -1216,27 +1278,47 @@ func (m *WebsiteMutation) AddedIDs(name string) []ent.Value {
 		if id := m.user; id != nil {
 			return []ent.Value{*id}
 		}
+	case website.EdgeEvents:
+		ids := make([]ent.Value, 0, len(m.events))
+		for id := range m.events {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *WebsiteMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedevents != nil {
+		edges = append(edges, website.EdgeEvents)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *WebsiteMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case website.EdgeEvents:
+		ids := make([]ent.Value, 0, len(m.removedevents))
+		for id := range m.removedevents {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *WebsiteMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.cleareduser {
 		edges = append(edges, website.EdgeUser)
+	}
+	if m.clearedevents {
+		edges = append(edges, website.EdgeEvents)
 	}
 	return edges
 }
@@ -1247,6 +1329,8 @@ func (m *WebsiteMutation) EdgeCleared(name string) bool {
 	switch name {
 	case website.EdgeUser:
 		return m.cleareduser
+	case website.EdgeEvents:
+		return m.clearedevents
 	}
 	return false
 }
@@ -1269,6 +1353,976 @@ func (m *WebsiteMutation) ResetEdge(name string) error {
 	case website.EdgeUser:
 		m.ResetUser()
 		return nil
+	case website.EdgeEvents:
+		m.ResetEvents()
+		return nil
 	}
 	return fmt.Errorf("unknown Website edge %s", name)
+}
+
+// WebsiteEventMutation represents an operation that mutates the WebsiteEvent nodes in the graph.
+type WebsiteEventMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	event_name      *string
+	url_path        *string
+	url_query       *string
+	referrer_path   *string
+	referrer_query  *string
+	referrer_domain *string
+	page_title      *string
+	page_data       *string
+	created_at      *time.Time
+	clearedFields   map[string]struct{}
+	website         *uuid.UUID
+	clearedwebsite  bool
+	done            bool
+	oldValue        func(context.Context) (*WebsiteEvent, error)
+	predicates      []predicate.WebsiteEvent
+}
+
+var _ ent.Mutation = (*WebsiteEventMutation)(nil)
+
+// websiteeventOption allows management of the mutation configuration using functional options.
+type websiteeventOption func(*WebsiteEventMutation)
+
+// newWebsiteEventMutation creates new mutation for the WebsiteEvent entity.
+func newWebsiteEventMutation(c config, op Op, opts ...websiteeventOption) *WebsiteEventMutation {
+	m := &WebsiteEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWebsiteEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWebsiteEventID sets the ID field of the mutation.
+func withWebsiteEventID(id uuid.UUID) websiteeventOption {
+	return func(m *WebsiteEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WebsiteEvent
+		)
+		m.oldValue = func(ctx context.Context) (*WebsiteEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WebsiteEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWebsiteEvent sets the old WebsiteEvent of the mutation.
+func withWebsiteEvent(node *WebsiteEvent) websiteeventOption {
+	return func(m *WebsiteEventMutation) {
+		m.oldValue = func(context.Context) (*WebsiteEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WebsiteEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WebsiteEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of WebsiteEvent entities.
+func (m *WebsiteEventMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WebsiteEventMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WebsiteEventMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WebsiteEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetEventName sets the "event_name" field.
+func (m *WebsiteEventMutation) SetEventName(s string) {
+	m.event_name = &s
+}
+
+// EventName returns the value of the "event_name" field in the mutation.
+func (m *WebsiteEventMutation) EventName() (r string, exists bool) {
+	v := m.event_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEventName returns the old "event_name" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldEventName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEventName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEventName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEventName: %w", err)
+	}
+	return oldValue.EventName, nil
+}
+
+// ResetEventName resets all changes to the "event_name" field.
+func (m *WebsiteEventMutation) ResetEventName() {
+	m.event_name = nil
+}
+
+// SetURLPath sets the "url_path" field.
+func (m *WebsiteEventMutation) SetURLPath(s string) {
+	m.url_path = &s
+}
+
+// URLPath returns the value of the "url_path" field in the mutation.
+func (m *WebsiteEventMutation) URLPath() (r string, exists bool) {
+	v := m.url_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldURLPath returns the old "url_path" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldURLPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldURLPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldURLPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldURLPath: %w", err)
+	}
+	return oldValue.URLPath, nil
+}
+
+// ClearURLPath clears the value of the "url_path" field.
+func (m *WebsiteEventMutation) ClearURLPath() {
+	m.url_path = nil
+	m.clearedFields[websiteevent.FieldURLPath] = struct{}{}
+}
+
+// URLPathCleared returns if the "url_path" field was cleared in this mutation.
+func (m *WebsiteEventMutation) URLPathCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldURLPath]
+	return ok
+}
+
+// ResetURLPath resets all changes to the "url_path" field.
+func (m *WebsiteEventMutation) ResetURLPath() {
+	m.url_path = nil
+	delete(m.clearedFields, websiteevent.FieldURLPath)
+}
+
+// SetURLQuery sets the "url_query" field.
+func (m *WebsiteEventMutation) SetURLQuery(s string) {
+	m.url_query = &s
+}
+
+// URLQuery returns the value of the "url_query" field in the mutation.
+func (m *WebsiteEventMutation) URLQuery() (r string, exists bool) {
+	v := m.url_query
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldURLQuery returns the old "url_query" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldURLQuery(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldURLQuery is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldURLQuery requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldURLQuery: %w", err)
+	}
+	return oldValue.URLQuery, nil
+}
+
+// ClearURLQuery clears the value of the "url_query" field.
+func (m *WebsiteEventMutation) ClearURLQuery() {
+	m.url_query = nil
+	m.clearedFields[websiteevent.FieldURLQuery] = struct{}{}
+}
+
+// URLQueryCleared returns if the "url_query" field was cleared in this mutation.
+func (m *WebsiteEventMutation) URLQueryCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldURLQuery]
+	return ok
+}
+
+// ResetURLQuery resets all changes to the "url_query" field.
+func (m *WebsiteEventMutation) ResetURLQuery() {
+	m.url_query = nil
+	delete(m.clearedFields, websiteevent.FieldURLQuery)
+}
+
+// SetReferrerPath sets the "referrer_path" field.
+func (m *WebsiteEventMutation) SetReferrerPath(s string) {
+	m.referrer_path = &s
+}
+
+// ReferrerPath returns the value of the "referrer_path" field in the mutation.
+func (m *WebsiteEventMutation) ReferrerPath() (r string, exists bool) {
+	v := m.referrer_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReferrerPath returns the old "referrer_path" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldReferrerPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReferrerPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReferrerPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReferrerPath: %w", err)
+	}
+	return oldValue.ReferrerPath, nil
+}
+
+// ClearReferrerPath clears the value of the "referrer_path" field.
+func (m *WebsiteEventMutation) ClearReferrerPath() {
+	m.referrer_path = nil
+	m.clearedFields[websiteevent.FieldReferrerPath] = struct{}{}
+}
+
+// ReferrerPathCleared returns if the "referrer_path" field was cleared in this mutation.
+func (m *WebsiteEventMutation) ReferrerPathCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldReferrerPath]
+	return ok
+}
+
+// ResetReferrerPath resets all changes to the "referrer_path" field.
+func (m *WebsiteEventMutation) ResetReferrerPath() {
+	m.referrer_path = nil
+	delete(m.clearedFields, websiteevent.FieldReferrerPath)
+}
+
+// SetReferrerQuery sets the "referrer_query" field.
+func (m *WebsiteEventMutation) SetReferrerQuery(s string) {
+	m.referrer_query = &s
+}
+
+// ReferrerQuery returns the value of the "referrer_query" field in the mutation.
+func (m *WebsiteEventMutation) ReferrerQuery() (r string, exists bool) {
+	v := m.referrer_query
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReferrerQuery returns the old "referrer_query" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldReferrerQuery(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReferrerQuery is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReferrerQuery requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReferrerQuery: %w", err)
+	}
+	return oldValue.ReferrerQuery, nil
+}
+
+// ClearReferrerQuery clears the value of the "referrer_query" field.
+func (m *WebsiteEventMutation) ClearReferrerQuery() {
+	m.referrer_query = nil
+	m.clearedFields[websiteevent.FieldReferrerQuery] = struct{}{}
+}
+
+// ReferrerQueryCleared returns if the "referrer_query" field was cleared in this mutation.
+func (m *WebsiteEventMutation) ReferrerQueryCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldReferrerQuery]
+	return ok
+}
+
+// ResetReferrerQuery resets all changes to the "referrer_query" field.
+func (m *WebsiteEventMutation) ResetReferrerQuery() {
+	m.referrer_query = nil
+	delete(m.clearedFields, websiteevent.FieldReferrerQuery)
+}
+
+// SetReferrerDomain sets the "referrer_domain" field.
+func (m *WebsiteEventMutation) SetReferrerDomain(s string) {
+	m.referrer_domain = &s
+}
+
+// ReferrerDomain returns the value of the "referrer_domain" field in the mutation.
+func (m *WebsiteEventMutation) ReferrerDomain() (r string, exists bool) {
+	v := m.referrer_domain
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReferrerDomain returns the old "referrer_domain" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldReferrerDomain(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReferrerDomain is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReferrerDomain requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReferrerDomain: %w", err)
+	}
+	return oldValue.ReferrerDomain, nil
+}
+
+// ClearReferrerDomain clears the value of the "referrer_domain" field.
+func (m *WebsiteEventMutation) ClearReferrerDomain() {
+	m.referrer_domain = nil
+	m.clearedFields[websiteevent.FieldReferrerDomain] = struct{}{}
+}
+
+// ReferrerDomainCleared returns if the "referrer_domain" field was cleared in this mutation.
+func (m *WebsiteEventMutation) ReferrerDomainCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldReferrerDomain]
+	return ok
+}
+
+// ResetReferrerDomain resets all changes to the "referrer_domain" field.
+func (m *WebsiteEventMutation) ResetReferrerDomain() {
+	m.referrer_domain = nil
+	delete(m.clearedFields, websiteevent.FieldReferrerDomain)
+}
+
+// SetPageTitle sets the "page_title" field.
+func (m *WebsiteEventMutation) SetPageTitle(s string) {
+	m.page_title = &s
+}
+
+// PageTitle returns the value of the "page_title" field in the mutation.
+func (m *WebsiteEventMutation) PageTitle() (r string, exists bool) {
+	v := m.page_title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPageTitle returns the old "page_title" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldPageTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPageTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPageTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPageTitle: %w", err)
+	}
+	return oldValue.PageTitle, nil
+}
+
+// ClearPageTitle clears the value of the "page_title" field.
+func (m *WebsiteEventMutation) ClearPageTitle() {
+	m.page_title = nil
+	m.clearedFields[websiteevent.FieldPageTitle] = struct{}{}
+}
+
+// PageTitleCleared returns if the "page_title" field was cleared in this mutation.
+func (m *WebsiteEventMutation) PageTitleCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldPageTitle]
+	return ok
+}
+
+// ResetPageTitle resets all changes to the "page_title" field.
+func (m *WebsiteEventMutation) ResetPageTitle() {
+	m.page_title = nil
+	delete(m.clearedFields, websiteevent.FieldPageTitle)
+}
+
+// SetPageData sets the "page_data" field.
+func (m *WebsiteEventMutation) SetPageData(s string) {
+	m.page_data = &s
+}
+
+// PageData returns the value of the "page_data" field in the mutation.
+func (m *WebsiteEventMutation) PageData() (r string, exists bool) {
+	v := m.page_data
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPageData returns the old "page_data" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldPageData(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPageData is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPageData requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPageData: %w", err)
+	}
+	return oldValue.PageData, nil
+}
+
+// ClearPageData clears the value of the "page_data" field.
+func (m *WebsiteEventMutation) ClearPageData() {
+	m.page_data = nil
+	m.clearedFields[websiteevent.FieldPageData] = struct{}{}
+}
+
+// PageDataCleared returns if the "page_data" field was cleared in this mutation.
+func (m *WebsiteEventMutation) PageDataCleared() bool {
+	_, ok := m.clearedFields[websiteevent.FieldPageData]
+	return ok
+}
+
+// ResetPageData resets all changes to the "page_data" field.
+func (m *WebsiteEventMutation) ResetPageData() {
+	m.page_data = nil
+	delete(m.clearedFields, websiteevent.FieldPageData)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WebsiteEventMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WebsiteEventMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WebsiteEvent entity.
+// If the WebsiteEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WebsiteEventMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WebsiteEventMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetWebsiteID sets the "website" edge to the Website entity by id.
+func (m *WebsiteEventMutation) SetWebsiteID(id uuid.UUID) {
+	m.website = &id
+}
+
+// ClearWebsite clears the "website" edge to the Website entity.
+func (m *WebsiteEventMutation) ClearWebsite() {
+	m.clearedwebsite = true
+}
+
+// WebsiteCleared reports if the "website" edge to the Website entity was cleared.
+func (m *WebsiteEventMutation) WebsiteCleared() bool {
+	return m.clearedwebsite
+}
+
+// WebsiteID returns the "website" edge ID in the mutation.
+func (m *WebsiteEventMutation) WebsiteID() (id uuid.UUID, exists bool) {
+	if m.website != nil {
+		return *m.website, true
+	}
+	return
+}
+
+// WebsiteIDs returns the "website" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WebsiteID instead. It exists only for internal usage by the builders.
+func (m *WebsiteEventMutation) WebsiteIDs() (ids []uuid.UUID) {
+	if id := m.website; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWebsite resets all changes to the "website" edge.
+func (m *WebsiteEventMutation) ResetWebsite() {
+	m.website = nil
+	m.clearedwebsite = false
+}
+
+// Where appends a list predicates to the WebsiteEventMutation builder.
+func (m *WebsiteEventMutation) Where(ps ...predicate.WebsiteEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WebsiteEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WebsiteEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WebsiteEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WebsiteEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WebsiteEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WebsiteEvent).
+func (m *WebsiteEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WebsiteEventMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.event_name != nil {
+		fields = append(fields, websiteevent.FieldEventName)
+	}
+	if m.url_path != nil {
+		fields = append(fields, websiteevent.FieldURLPath)
+	}
+	if m.url_query != nil {
+		fields = append(fields, websiteevent.FieldURLQuery)
+	}
+	if m.referrer_path != nil {
+		fields = append(fields, websiteevent.FieldReferrerPath)
+	}
+	if m.referrer_query != nil {
+		fields = append(fields, websiteevent.FieldReferrerQuery)
+	}
+	if m.referrer_domain != nil {
+		fields = append(fields, websiteevent.FieldReferrerDomain)
+	}
+	if m.page_title != nil {
+		fields = append(fields, websiteevent.FieldPageTitle)
+	}
+	if m.page_data != nil {
+		fields = append(fields, websiteevent.FieldPageData)
+	}
+	if m.created_at != nil {
+		fields = append(fields, websiteevent.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WebsiteEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case websiteevent.FieldEventName:
+		return m.EventName()
+	case websiteevent.FieldURLPath:
+		return m.URLPath()
+	case websiteevent.FieldURLQuery:
+		return m.URLQuery()
+	case websiteevent.FieldReferrerPath:
+		return m.ReferrerPath()
+	case websiteevent.FieldReferrerQuery:
+		return m.ReferrerQuery()
+	case websiteevent.FieldReferrerDomain:
+		return m.ReferrerDomain()
+	case websiteevent.FieldPageTitle:
+		return m.PageTitle()
+	case websiteevent.FieldPageData:
+		return m.PageData()
+	case websiteevent.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WebsiteEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case websiteevent.FieldEventName:
+		return m.OldEventName(ctx)
+	case websiteevent.FieldURLPath:
+		return m.OldURLPath(ctx)
+	case websiteevent.FieldURLQuery:
+		return m.OldURLQuery(ctx)
+	case websiteevent.FieldReferrerPath:
+		return m.OldReferrerPath(ctx)
+	case websiteevent.FieldReferrerQuery:
+		return m.OldReferrerQuery(ctx)
+	case websiteevent.FieldReferrerDomain:
+		return m.OldReferrerDomain(ctx)
+	case websiteevent.FieldPageTitle:
+		return m.OldPageTitle(ctx)
+	case websiteevent.FieldPageData:
+		return m.OldPageData(ctx)
+	case websiteevent.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown WebsiteEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WebsiteEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case websiteevent.FieldEventName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEventName(v)
+		return nil
+	case websiteevent.FieldURLPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetURLPath(v)
+		return nil
+	case websiteevent.FieldURLQuery:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetURLQuery(v)
+		return nil
+	case websiteevent.FieldReferrerPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReferrerPath(v)
+		return nil
+	case websiteevent.FieldReferrerQuery:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReferrerQuery(v)
+		return nil
+	case websiteevent.FieldReferrerDomain:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReferrerDomain(v)
+		return nil
+	case websiteevent.FieldPageTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPageTitle(v)
+		return nil
+	case websiteevent.FieldPageData:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPageData(v)
+		return nil
+	case websiteevent.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WebsiteEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WebsiteEventMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WebsiteEventMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WebsiteEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WebsiteEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WebsiteEventMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(websiteevent.FieldURLPath) {
+		fields = append(fields, websiteevent.FieldURLPath)
+	}
+	if m.FieldCleared(websiteevent.FieldURLQuery) {
+		fields = append(fields, websiteevent.FieldURLQuery)
+	}
+	if m.FieldCleared(websiteevent.FieldReferrerPath) {
+		fields = append(fields, websiteevent.FieldReferrerPath)
+	}
+	if m.FieldCleared(websiteevent.FieldReferrerQuery) {
+		fields = append(fields, websiteevent.FieldReferrerQuery)
+	}
+	if m.FieldCleared(websiteevent.FieldReferrerDomain) {
+		fields = append(fields, websiteevent.FieldReferrerDomain)
+	}
+	if m.FieldCleared(websiteevent.FieldPageTitle) {
+		fields = append(fields, websiteevent.FieldPageTitle)
+	}
+	if m.FieldCleared(websiteevent.FieldPageData) {
+		fields = append(fields, websiteevent.FieldPageData)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WebsiteEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WebsiteEventMutation) ClearField(name string) error {
+	switch name {
+	case websiteevent.FieldURLPath:
+		m.ClearURLPath()
+		return nil
+	case websiteevent.FieldURLQuery:
+		m.ClearURLQuery()
+		return nil
+	case websiteevent.FieldReferrerPath:
+		m.ClearReferrerPath()
+		return nil
+	case websiteevent.FieldReferrerQuery:
+		m.ClearReferrerQuery()
+		return nil
+	case websiteevent.FieldReferrerDomain:
+		m.ClearReferrerDomain()
+		return nil
+	case websiteevent.FieldPageTitle:
+		m.ClearPageTitle()
+		return nil
+	case websiteevent.FieldPageData:
+		m.ClearPageData()
+		return nil
+	}
+	return fmt.Errorf("unknown WebsiteEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WebsiteEventMutation) ResetField(name string) error {
+	switch name {
+	case websiteevent.FieldEventName:
+		m.ResetEventName()
+		return nil
+	case websiteevent.FieldURLPath:
+		m.ResetURLPath()
+		return nil
+	case websiteevent.FieldURLQuery:
+		m.ResetURLQuery()
+		return nil
+	case websiteevent.FieldReferrerPath:
+		m.ResetReferrerPath()
+		return nil
+	case websiteevent.FieldReferrerQuery:
+		m.ResetReferrerQuery()
+		return nil
+	case websiteevent.FieldReferrerDomain:
+		m.ResetReferrerDomain()
+		return nil
+	case websiteevent.FieldPageTitle:
+		m.ResetPageTitle()
+		return nil
+	case websiteevent.FieldPageData:
+		m.ResetPageData()
+		return nil
+	case websiteevent.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WebsiteEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WebsiteEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.website != nil {
+		edges = append(edges, websiteevent.EdgeWebsite)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WebsiteEventMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case websiteevent.EdgeWebsite:
+		if id := m.website; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WebsiteEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WebsiteEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WebsiteEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedwebsite {
+		edges = append(edges, websiteevent.EdgeWebsite)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WebsiteEventMutation) EdgeCleared(name string) bool {
+	switch name {
+	case websiteevent.EdgeWebsite:
+		return m.clearedwebsite
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WebsiteEventMutation) ClearEdge(name string) error {
+	switch name {
+	case websiteevent.EdgeWebsite:
+		m.ClearWebsite()
+		return nil
+	}
+	return fmt.Errorf("unknown WebsiteEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WebsiteEventMutation) ResetEdge(name string) error {
+	switch name {
+	case websiteevent.EdgeWebsite:
+		m.ResetWebsite()
+		return nil
+	}
+	return fmt.Errorf("unknown WebsiteEvent edge %s", name)
 }

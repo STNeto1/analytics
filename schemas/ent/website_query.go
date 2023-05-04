@@ -6,7 +6,9 @@ import (
 	"_schemas/ent/predicate"
 	"_schemas/ent/user"
 	"_schemas/ent/website"
+	"_schemas/ent/websiteevent"
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -24,6 +26,7 @@ type WebsiteQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Website
 	withUser   *UserQuery
+	withEvents *WebsiteEventQuery
 	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -76,6 +79,28 @@ func (wq *WebsiteQuery) QueryUser() *UserQuery {
 			sqlgraph.From(website.Table, website.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, website.UserTable, website.UserColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(wq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEvents chains the current query on the "events" edge.
+func (wq *WebsiteQuery) QueryEvents() *WebsiteEventQuery {
+	query := (&WebsiteEventClient{config: wq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := wq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := wq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(website.Table, website.FieldID, selector),
+			sqlgraph.To(websiteevent.Table, websiteevent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, website.EventsTable, website.EventsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(wq.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +301,7 @@ func (wq *WebsiteQuery) Clone() *WebsiteQuery {
 		inters:     append([]Interceptor{}, wq.inters...),
 		predicates: append([]predicate.Website{}, wq.predicates...),
 		withUser:   wq.withUser.Clone(),
+		withEvents: wq.withEvents.Clone(),
 		// clone intermediate query.
 		sql:  wq.sql.Clone(),
 		path: wq.path,
@@ -290,6 +316,17 @@ func (wq *WebsiteQuery) WithUser(opts ...func(*UserQuery)) *WebsiteQuery {
 		opt(query)
 	}
 	wq.withUser = query
+	return wq
+}
+
+// WithEvents tells the query-builder to eager-load the nodes that are connected to
+// the "events" edge. The optional arguments are used to configure the query builder of the edge.
+func (wq *WebsiteQuery) WithEvents(opts ...func(*WebsiteEventQuery)) *WebsiteQuery {
+	query := (&WebsiteEventClient{config: wq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	wq.withEvents = query
 	return wq
 }
 
@@ -372,8 +409,9 @@ func (wq *WebsiteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Webs
 		nodes       = []*Website{}
 		withFKs     = wq.withFKs
 		_spec       = wq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			wq.withUser != nil,
+			wq.withEvents != nil,
 		}
 	)
 	if wq.withUser != nil {
@@ -403,6 +441,13 @@ func (wq *WebsiteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Webs
 	if query := wq.withUser; query != nil {
 		if err := wq.loadUser(ctx, query, nodes, nil,
 			func(n *Website, e *User) { n.Edges.User = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := wq.withEvents; query != nil {
+		if err := wq.loadEvents(ctx, query, nodes,
+			func(n *Website) { n.Edges.Events = []*WebsiteEvent{} },
+			func(n *Website, e *WebsiteEvent) { n.Edges.Events = append(n.Edges.Events, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -438,6 +483,37 @@ func (wq *WebsiteQuery) loadUser(ctx context.Context, query *UserQuery, nodes []
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (wq *WebsiteQuery) loadEvents(ctx context.Context, query *WebsiteEventQuery, nodes []*Website, init func(*Website), assign func(*Website, *WebsiteEvent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Website)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.WebsiteEvent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(website.EventsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.website_id
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "website_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "website_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
