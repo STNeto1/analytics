@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
 
 type IAuthService interface {
@@ -22,4 +23,8 @@ type IAuthService interface {
 	// ValidateToken validates a token and returns the user ID if the token is valid.
 	// It returns an error on failure.
 	ValidateToken(token string) (*jwt.RegisteredClaims, error)
+
+	// GetUserFromId returns the user with the given ID.
+	// It returns an error on failure.
+	GetUserFromId(ctx context.Context, id uuid.UUID) (*ent.User, error)
 }

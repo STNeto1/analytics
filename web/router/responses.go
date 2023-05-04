@@ -6,6 +6,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+type UnauthorizedResponse struct {
+	Message string `json:"message"`
+}
+
 type BadRequestResponse struct {
 	Message string `json:"message"`
 	Error   string `json:"error,omitempty"`

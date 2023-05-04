@@ -4,7 +4,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	cookieName = "analytics.session"
+	contextKey = "user"
 )
 
 func (r *RouterContainer) CreateAuthRoutes() {
@@ -73,11 +80,49 @@ func (r *RouterContainer) CreateAuthRoutes() {
 			"success": true,
 		})
 	})
+
+	group.GET("/profile", func(c echo.Context) error {
+		user, ok := c.Get("user").(*jwt.Token)
+		if !ok {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: "invalid token",
+			})
+		}
+
+		claims, ok := user.Claims.(*jwt.RegisteredClaims)
+		if !ok {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: "invalid token",
+			})
+		}
+
+		validUuid, err := uuid.Parse(claims.Subject)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: "invalid token",
+			})
+		}
+
+		u, err := r.authService.GetUserFromId(c.Request().Context(), validUuid)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusOK, echo.Map{
+			"id":         u.ID.String(),
+			"name":       u.Name,
+			"email":      u.Email,
+			"created_at": u.CreatedAt.Format(time.RFC3339),
+		})
+	})
+
 }
 
 func createCookieFromToken(token string) *http.Cookie {
 	return &http.Cookie{
-		Name:     "analytics.session",
+		Name:     cookieName,
 		Domain:   "localhost",
 		Value:    token,
 		Path:     "/",
