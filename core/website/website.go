@@ -23,4 +23,8 @@ type IWebsiteService interface {
 	// UpdateWebsite updates the website with the given ID for the given user.
 	// It returns a website on success, or an error on failure.
 	UpdateWebsite(ctx context.Context, user *ent.User, id uuid.UUID, name, domain string) (*ent.Website, error)
+
+	// DeleteWebsite deletes the website with the given ID for the given user.
+	// It returns an error on failure.
+	DeleteWebsite(ctx context.Context, user *ent.User, id uuid.UUID) error
 }
