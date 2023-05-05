@@ -27,6 +27,15 @@ func main() {
 
 	pkg.Logger(e, logger)
 	e.Use(middleware.Recover())
+
+	// CORS allow all
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAccessControlAllowOrigin},
+		AllowCredentials: true,
+	}))
+
 	e.Use(echojwt.WithConfig(echojwt.Config{
 		SigningKey: []byte(os.Getenv("SECRET")),
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
