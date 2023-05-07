@@ -211,6 +211,34 @@ func (r *RouterContainer) CreateWebsiteRoutes() {
 		return c.JSON(http.StatusOK, events)
 	})
 
+	group.GET("/events/histogram/:id", func(c echo.Context) error {
+		u, err := r.UserFromContext(c)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: err.Error(),
+			})
+		}
+
+		id := c.Param("id")
+		parsedId, err := uuid.Parse(id)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: "invalid id",
+			})
+		}
+
+		level := c.QueryParam("level")
+
+		events, err := r.websiteService.GetWebsiteEventHistogram(c.Request().Context(), u, parsedId, level)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, InternalServerErrorResponse{
+				Message: err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusOK, events)
+	})
+
 	group.GET("/events/:id", func(c echo.Context) error {
 		u, err := r.UserFromContext(c)
 		if err != nil {

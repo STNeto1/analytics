@@ -39,4 +39,8 @@ type IWebsiteService interface {
 	// GetWebsiteEventsByName returns all events for the given website and user.
 	// It returns a list of events on success, or an error on failure.
 	GetWebsiteEventsByName(ctx context.Context, user *ent.User, id uuid.UUID, eventName string) ([]*ent.WebsiteEvent, error)
+
+	// GetWebsiteEventHistogram returns a histogram of events for the given website and user.
+	// It returns a list of events on success, or an error on failure.
+	GetWebsiteEventHistogram(ctx context.Context, user *ent.User, id uuid.UUID, level string) (Histogram, error)
 }
