@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -82,28 +80,7 @@ func (r *RouterContainer) CreateAuthRoutes() {
 	})
 
 	group.GET("/profile", func(c echo.Context) error {
-		user, ok := c.Get("user").(*jwt.Token)
-		if !ok {
-			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
-				Message: "invalid token",
-			})
-		}
-
-		claims, ok := user.Claims.(*jwt.RegisteredClaims)
-		if !ok {
-			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
-				Message: "invalid token",
-			})
-		}
-
-		validUuid, err := uuid.Parse(claims.Subject)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
-				Message: "invalid token",
-			})
-		}
-
-		u, err := r.authService.GetUserFromId(c.Request().Context(), validUuid)
+		u, err := r.UserFromContext(c)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
 				Message: err.Error(),

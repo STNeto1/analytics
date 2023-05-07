@@ -10,6 +10,14 @@ type UnauthorizedResponse struct {
 	Message string `json:"message"`
 }
 
+type InternalServerErrorResponse struct {
+	Message string `json:"message"`
+}
+
+type NotFoundResponse struct {
+	Message string `json:"message"`
+}
+
 type BadRequestResponse struct {
 	Message string `json:"message"`
 	Error   string `json:"error,omitempty"`

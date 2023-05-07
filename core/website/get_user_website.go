@@ -15,5 +15,6 @@ func (s *WebsiteService) GetWebsiteByID(ctx context.Context, usr *ent.User, id u
 		Query().
 		Where(website.ID(id)).
 		Where(website.HasUserWith(user.ID(usr.ID))).
+		Where(website.DeletedAtIsNil()).
 		First(ctx)
 }

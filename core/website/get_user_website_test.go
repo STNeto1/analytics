@@ -3,6 +3,7 @@ package website_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -61,4 +62,25 @@ func TestGetUserWebsiteWithValidIdAndUser(t *testing.T) {
 	assert.NotNil(t, website)
 	assert.NoError(t, err)
 	assert.Equal(t, wbst.ID, website.ID)
+}
+
+func TestGetUserDeletedWebsite(t *testing.T) {
+	s, client, l := CreateWebsiteService(t)
+	defer client.Close()
+	defer l.Sync()
+
+	usr, err := generateAnyValidUser(client)
+	assert.NotNil(t, usr)
+	assert.NoError(t, err)
+
+	wbst, err := generateAnyValidWebsite(client, usr)
+	assert.NotNil(t, wbst)
+	assert.NoError(t, err)
+
+	err = client.Website.UpdateOne(wbst).SetDeletedAt(time.Now()).Exec(context.Background())
+	assert.NoError(t, err)
+
+	website, err := s.GetWebsiteByID(context.Background(), usr, wbst.ID)
+	assert.Nil(t, website)
+	assert.Error(t, err)
 }

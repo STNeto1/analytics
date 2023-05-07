@@ -2,6 +2,7 @@ package main
 
 import (
 	"_core/auth"
+	"_core/website"
 	"_web/pkg"
 	"_web/router"
 	"net/http"
@@ -56,9 +57,11 @@ func main() {
 	}))
 
 	authService := auth.NewAuthService(conn, os.Getenv("SECRET"), logger)
-	routerContainer := router.NewRouterContainer(logger, e, authService)
+	websiteService := website.NewWebsiteService(conn, logger)
+	routerContainer := router.NewRouterContainer(logger, e, authService, websiteService)
 
 	routerContainer.CreateAuthRoutes()
+	routerContainer.CreateWebsiteRoutes()
 
 	e.Logger.Fatal(e.Start(":1323"))
 }
