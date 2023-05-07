@@ -2,6 +2,7 @@ package website
 
 import (
 	"_schemas/ent"
+	"_schemas/ent/websiteevent"
 	"context"
 
 	"github.com/google/uuid"
@@ -13,5 +14,8 @@ func (s *WebsiteService) GetWebsiteEvents(ctx context.Context, user *ent.User, i
 		return nil, err
 	}
 
-	return website.QueryEvents().All(ctx)
+	return website.
+		QueryEvents().
+		Order(websiteevent.ByCreatedAt()).
+		All(ctx)
 }
