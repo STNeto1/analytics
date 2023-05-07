@@ -183,6 +183,34 @@ func (r *RouterContainer) CreateWebsiteRoutes() {
 		return c.JSON(http.StatusNoContent, nil)
 	})
 
+	group.GET("/events/search/:id/:name", func(c echo.Context) error {
+		u, err := r.UserFromContext(c)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: err.Error(),
+			})
+		}
+
+		id := c.Param("id")
+		parsedId, err := uuid.Parse(id)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, BadRequestResponse{
+				Message: "invalid id",
+			})
+		}
+
+		name := c.Param("name")
+
+		events, err := r.websiteService.GetWebsiteEventsByName(c.Request().Context(), u, parsedId, name)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, InternalServerErrorResponse{
+				Message: err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusOK, events)
+	})
+
 	group.GET("/events/:id", func(c echo.Context) error {
 		u, err := r.UserFromContext(c)
 		if err != nil {
